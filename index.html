@@ -2,43 +2,50 @@
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>لوحة تحكم العيادة</title>
+    <title>إدارة العيادة - الماليات</title>
     <style>
-        body { font-family: 'Segoe UI'; background: #f8f9fa; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        body { font-family: 'Segoe UI'; background: #f8f9fa; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; }
-        .search-bar { display: flex; gap: 10px; margin: 20px 0; }
-        input, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .stats-card { background: #27ae60; color: white; padding: 15px; border-radius: 10px; margin: 20px 0; display: flex; justify-content: space-between; align-items: center; }
+        input, select, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 15px; text-align: right; border-bottom: 1px solid #eee; }
-        th { background: #f1f3f4; }
-        .btn-add { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;}
-        .logout-link { color: #d93025; text-decoration: none; font-weight: bold; }
-        .btn-whatsapp { background: #25d366; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-left: 5px; }
-        .btn-print { background: #607d8b; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #eee; }
+        .badge { padding: 4px 8px; border-radius: 5px; font-size: 12px; background: #e3f2fd; color: #1a73e8; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>سجل العيادة الذكي 📂</h1>
-            <a href="/logout" class="logout-link">تسجيل خروج</a>
+            <h2>عيادتي - مرحباً بك يا {{ 'دكتور' if session['role'] == 'doctor' else 'ممرضة' }}</h2>
+            <a href="/logout" style="color:red; text-decoration:none;">خروج</a>
         </div>
 
-        <form class="search-bar" action="/" method="GET">
-            <input type="text" name="search" placeholder="ابحث بالاسم أو الموبايل..." style="flex: 1;">
-            <button type="submit" style="background:#1a73e8; color:white; border:none; padding:10px 25px; border-radius:8px; cursor:pointer;">بحث</button>
-            <a href="/" style="text-decoration:none; padding-top:10px; margin-right: 10px;">إعادة تعيين</a>
-        </form>
+        {% if session['role'] == 'doctor' %}
+        <div class="stats-card">
+            <span>إجمالي تحصيل اليوم:</span>
+            {% set total = namespace(value=0) %}
+            {% for p in patients %}{% set total.value = total.value + (p[6] | float) %}{% endfor %}
+            <span style="font-size: 24px; font-weight: bold;">{{ total.value }} ج.م</span>
+        </div>
+        {% endif %}
 
-        <details style="background:#e3f2fd; padding:15px; border-radius:10px; margin-bottom:20px;">
-            <summary style="font-weight:bold; cursor:pointer; color: #1a73e8;">+ تسجيل مريض جديد</summary>
-            <form action="/add" method="POST" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
+        <details open style="background:#f1f3f4; padding:15px; border-radius:10px;">
+            <summary style="cursor:pointer; font-weight:bold;">تسجيل حالة جديدة</summary>
+            <form action="/add" method="POST" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-top:15px;">
                 <input type="text" name="name" placeholder="اسم المريض" required>
-                <input type="text" name="phone" placeholder="رقم الموبايل" id="new_phone">
+                <input type="text" name="phone" placeholder="الموبايل">
                 <input type="number" name="age" placeholder="السن">
-                <textarea name="history" placeholder="التشخيص والروشتة..." style="grid-column: span 2; height: 100px;"></textarea>
-                <button type="submit" class="btn-add" style="grid-column: span 2;">حفظ البيانات</button>
+                
+                <select name="visit_type" required>
+                    <option value="" disabled selected>نوع الزيارة...</option>
+                    <option value="كشف جديد">كشف جديد</option>
+                    <option value="استشارة">استشارة</option>
+                </select>
+                
+                <input type="number" name="fees" placeholder="المبلغ المدفوع" required>
+                <textarea name="history" placeholder="التشخيص..." style="grid-column: span 3; height: 60px;"></textarea>
+                <button type="submit" style="grid-column: span 3; background:#28a745; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer;">حفظ وتسجيل المبلغ</button>
             </form>
         </details>
 
@@ -46,23 +53,26 @@
             <thead>
                 <tr>
                     <th>المريض</th>
-                    <th>الموبايل</th>
-                    <th>السن</th>
+                    <th>نوع الزيارة</th>
+                    <th>المبلغ</th>
+                    {% if session['role'] == 'doctor' %}
                     <th>التاريخ الطبي</th>
                     <th>إجراءات</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% for p in patients %}
                 <tr>
-                    <td><strong>{{ p[1] }}</strong></td>
-                    <td>{{ p[2] }}</td>
-                    <td>{{ p[3] }}</td>
+                    <td><strong>{{ p[1] }}</strong><br><small>{{ p[2] }}</small></td>
+                    <td><span class="badge">{{ p[5] }}</span></td>
+                    <td><b>{{ p[6] }} ج.م</b></td>
+                    {% if session['role'] == 'doctor' %}
                     <td>{{ p[4] }}</td>
                     <td>
-                        <button onclick="sendWhatsApp('{{ p[2] }}', '{{ p[4] }}')" class="btn-whatsapp">واتساب 📱</button>
-                        <button onclick="printPrescription('{{ p[1] }}', '{{ p[3] }}', '{{ p[4] }}')" class="btn-print">طباعة 🖨️</button>
+                        <button onclick="sendWhatsApp('{{ p[2] }}', '{{ p[4] }}')" style="background:#25d366; color:white; border:none; padding:5px; border-radius:4px; cursor:pointer;">واتساب</button>
                     </td>
+                    {% endif %}
                 </tr>
                 {% endfor %}
             </tbody>
@@ -71,34 +81,10 @@
 
     <script>
     function sendWhatsApp(phone, history) {
-        if(!phone || phone === 'None') { alert("يرجى إدخال رقم هاتف صحيح"); return; }
         let cleanPhone = phone.replace(/\D/g, '');
-        if (cleanPhone.startsWith('01') && cleanPhone.length === 11) { cleanPhone = '2' + cleanPhone; }
-        
-        let message = `*روشتة طبية*\n\n*التشخيص والتعليمات:*\n${history}`;
-        let url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank').focus();
-    }
-
-    function printPrescription(name, age, history) {
-        let printWindow = window.open('', '_blank', 'height=600,width=800');
-        if (!printWindow) {
-            alert("يرجى السماح بالنوافذ المنبثقة (Pop-ups) من إعدادات المتصفح");
-            return;
-        }
-        printWindow.document.write('<html><head><title>روشتة</title>');
-        printWindow.document.write('<style>body{font-family:Arial; direction:rtl; padding:40px; border:2px solid #000;} .header{text-align:center; border-bottom:1px solid #000; margin-bottom:20px;}</style>');
-        printWindow.document.write('</head><body>');
-        printWindow.document.write('<div class="header"><h1>روشتة طبية</h1></div>');
-        printWindow.document.write('<p><b>المريض:</b> ' + name + ' &nbsp;&nbsp;&nbsp; <b>السن:</b> ' + age + '</p>');
-        printWindow.document.write('<hr><p><b>التشخيص والأدوية:</b><br><br>' + history.replace(/\n/g, '<br>') + '</p>');
-        printWindow.document.write('</body></html>');
-        printWindow.document.close();
-        
-        setTimeout(function() {
-            printWindow.print();
-            printWindow.close();
-        }, 500);
+        if (cleanPhone.startsWith('01')) cleanPhone = '2' + cleanPhone;
+        let url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(history)}`;
+        window.open(url, '_blank');
     }
     </script>
 </body>
